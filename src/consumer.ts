@@ -1,7 +1,8 @@
 import amqp from 'amqplib';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
-
 /**
  * Establishes a connection to a RabbitMQ server.
  *
@@ -18,6 +19,14 @@ export const createMQConnection = async (): Promise<amqp.Connection | undefined>
     }
 }
 
+/**
+ * Closes the RabbitMQ connection, shutting down all channels and releasing
+ * all server resources allocated to the connection.
+ *
+ * @param {amqp.Connection} connection - The RabbitMQ connection object.
+ * @returns {Promise<void>} A promise that resolves when the connection is
+ * closed, or rejects with an error if an error occurs during shutdown.
+ */
 export const closeMQConnection = async (connection: amqp.Connection): Promise<void> => {
     try {
         await connection.close();
@@ -27,6 +36,14 @@ export const closeMQConnection = async (connection: amqp.Connection): Promise<vo
     }
 }
 
+/**
+ * Creates a RabbitMQ channel, a lightweight connection to the RabbitMQ server
+ * that handles the sending and receiving of messages.
+ *
+ * @param {amqp.Connection} connection - The RabbitMQ connection object.
+ * @returns {Promise<amqp.Channel | undefined>} A promise that resolves to the
+ * RabbitMQ channel object if successful, or undefined if an error occurs.
+ */
 export const createChannel = async (connection: amqp.Connection): Promise<amqp.Channel | undefined> => {
     try {
         const channel = await connection.createChannel();
@@ -37,6 +54,14 @@ export const createChannel = async (connection: amqp.Connection): Promise<amqp.C
     }
 }
 
+/**
+ * Closes a RabbitMQ channel, a lightweight connection to the RabbitMQ server
+ * that handles the sending and receiving of messages.
+ *
+ * @param {amqp.Channel} channel - The RabbitMQ channel object.
+ * @returns {Promise<void>} A promise that resolves when the channel is closed,
+ * or rejects with an error if an error occurs during shutdown.
+ */
 export const closeChannel = async (channel: amqp.Channel): Promise<void> => {
     try {
         await channel.close();
@@ -45,6 +70,16 @@ export const closeChannel = async (channel: amqp.Channel): Promise<void> => {
         console.error('Error closing RabbitMQ channel:', error);
     }
 }
+
+/**
+ * Consumes a message from a RabbitMQ queue.
+ *
+ * @param {amqp.Channel} channel - The RabbitMQ channel object.
+ * @param {string} queueName - The name of the RabbitMQ queue to consume from.
+ *
+ * @returns {Promise<void>} A promise that resolves when a message is consumed
+ * from the queue, or rejects with an error if an error occurs during consumption.
+ */
 
 export const consumeMessage = async (channel: amqp.Channel, queueName: string): Promise<void> => {
     try {
@@ -57,11 +92,6 @@ export const consumeMessage = async (channel: amqp.Channel, queueName: string): 
                 const content = message.content.toString();
                 console.log('Received message from RabbitMQ queue:');
                 console.log(content);
-
-                // Simulate message processing
-                // Process your message here (e.g., send an email, log, etc.)
-
-                // Acknowledge the message after processing
                 // channel.ack(message);
             }
         }, { noAck: false });
@@ -82,10 +112,8 @@ const runConsumer = async () => {
     if (!channel) return;
 
     try {
-        // Start consuming messages and keep the connection open
         await consumeMessage(channel, 'send_email_queue');
 
-        // Keep the connection open for consuming messages indefinitely
         process.on('SIGINT', async () => {
             console.log('Gracefully shutting down...');
             await closeChannel(channel);
